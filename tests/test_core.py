@@ -73,6 +73,26 @@ class TestCore(unittest.TestCase):
         expected = "A_Title_With_Weird_Chars_stuff"
         self.assertEqual(format_new_name(info), expected)
 
+    def test_format_new_name_with_template(self):
+        info = {
+            "title": "My_Awesome_Paper",
+            "first_author": "Doe",
+            "year": "2024",
+            "journal": "Nature"
+        }
+        template = "{first_author}_{year}_{title}"
+        expected = "Doe_2024_My_Awesome_Paper"
+        self.assertEqual(format_new_name(info, template), expected)
+
+    def test_format_new_name_with_template_missing_keys(self):
+        info = {
+            "title": "My_Awesome_Paper",
+            "year": "2024",
+        }
+        template = "{first_author}_{year}_{title}"
+        expected = "2024_My_Awesome_Paper"
+        self.assertEqual(format_new_name(info, template), expected)
+
     @patch('llmtitle.core.get_new_filename_from_gemini')
     def test_process_and_rename_file_dry_run(self, mock_gemini):
         # Mock the Gemini response
@@ -89,7 +109,8 @@ class TestCore(unittest.TestCase):
             filepath,
             model_name="test_model",
             disable_thinking=True,
-            dry_run=True
+            dry_run=True,
+            template="{title}_{author}"
         )
 
         # Assertions
@@ -111,7 +132,7 @@ class TestCore(unittest.TestCase):
             conflict_file = dir_path / "conflict_name_test.pdf"
             conflict_file.touch()
 
-            _, _, status = process_and_rename_file(original_file, "model", False, False, "skip")
+            _, _, status = process_and_rename_file(original_file, "model", False, False, "skip", "{title}_{author}")
 
             self.assertEqual(status, "conflict_skipped")
             self.assertTrue(original_file.exists())
@@ -127,7 +148,7 @@ class TestCore(unittest.TestCase):
             conflict_file = dir_path / "conflict_name_test.pdf"
             conflict_file.write_text("conflict content")
 
-            _, new_filepath, status = process_and_rename_file(original_file, "model", False, False, "overwrite")
+            _, new_filepath, status = process_and_rename_file(original_file, "model", False, False, "overwrite", "{title}_{author}")
 
             self.assertEqual(status, "success")
             self.assertFalse(original_file.exists())
@@ -144,7 +165,7 @@ class TestCore(unittest.TestCase):
             conflict_file = dir_path / "conflict_name_test.pdf"
             conflict_file.touch()
 
-            _, new_filepath, status = process_and_rename_file(original_file, "model", False, False, "rename")
+            _, new_filepath, status = process_and_rename_file(original_file, "model", False, False, "rename", "{title}_{author}")
 
             self.assertEqual(status, "success")
             self.assertFalse(original_file.exists())

@@ -1,6 +1,7 @@
 
 import sys
 import pathlib
+from pypdf import PdfReader
 
 from google import genai
 from google.genai import types
@@ -20,12 +21,24 @@ ALLOWED_MODELS = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"]
 DEFAULT_MODEL = ALLOWED_MODELS[0]
 # --- End Model Configuration ---
 
-def build_gemini_prompt():
+def build_gemini_prompt(context: str = None):
     """Builds the detailed JSON-mode prompt for Gemini."""
-    return """
+    
+    context_prompt = ""
+    if context:
+        context_prompt = f"""
+        An important piece of context has been provided by the user, which you should use to guide your response:
+        ---
+        {context}
+        ---
+        """
+
+    return f"""
     Analyze the content of this file (the first 2-3 pages are likely sufficient).
     It is often an academic document (lecture notes, exam, book, or scientific paper),
     but it could be any general document.
+
+    {context_prompt}
 
     Identify the document type and relevant information to rename it.
 
@@ -41,7 +54,7 @@ def build_gemini_prompt():
     Respond EXCLUSIVELY with a single JSON object. NEVER add text before or after the JSON (not even ```json).
 
     The JSON format must be:
-    {
+    {{
       "type": "..." (possible values: "notes", "exam", "book", "paper", "other"),
       "subject": "..." (e.g., "mathematical_analysis_1", or null if not found),
       "year": "..." (only year, e.g., "2024", or null if not found),
@@ -52,13 +65,13 @@ def build_gemini_prompt():
                      If 'paper', MUST be 3-5 keywords.
                      If 'book', the full title.
                      If 'other', a general descriptive title based on content, including dates or names if relevant.)
-    }
+    }}
 
     Normalize all extracted values: all lowercase and use '_' (underscore) instead of spaces.
     If a piece of information required by the rules is not present, its value must be null.
     """
 
-def get_new_filename_from_gemini(filepath: pathlib.Path, model_name: str, disable_thinking: bool = False):
+def get_new_filename_from_gemini(filepath: pathlib.Path, model_name: str, disable_thinking: bool = False, context: str = None, max_pages: int = None):
     """
     Loads the file, queries the Gemini API, and returns the raw text response.
     Returns (str: response_text) on success, or (None) on failure.
@@ -67,19 +80,34 @@ def get_new_filename_from_gemini(filepath: pathlib.Path, model_name: str, disabl
         print(f"Error: File '{filepath}' does not exist.", file=sys.stderr)
         return None
 
-    try:
-        file_data = filepath.read_bytes()
-        mime_type = get_file_mime_type(filepath)
+    mime_type = get_file_mime_type(filepath)
 
-        file_part = types.Part.from_bytes(
-            data=file_data,
-            mime_type=mime_type
-        )
-    except Exception as e:
-        print(f"Error reading file '{filepath}': {e}", file=sys.stderr)
-        return None
+    if mime_type == 'application/pdf' and max_pages is not None and max_pages > 0:
+        try:
+            reader = PdfReader(filepath)
+            text_content = ""
+            for i, page in enumerate(reader.pages):
+                if i >= max_pages:
+                    break
+                text_content += page.extract_text() or ""
+            
+            file_part = types.Part.from_text(text=text_content)
 
-    prompt = build_gemini_prompt()
+        except Exception as e:
+            print(f"Error reading PDF file '{filepath}': {e}", file=sys.stderr)
+            return None
+    else:
+        try:
+            file_data = filepath.read_bytes()
+            file_part = types.Part.from_bytes(
+                data=file_data,
+                mime_type=mime_type
+            )
+        except Exception as e:
+            print(f"Error reading file '{filepath}': {e}", file=sys.stderr)
+            return None
+
+    prompt = build_gemini_prompt(context)
 
     gen_config = None
     if disable_thinking:

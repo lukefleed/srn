@@ -3,8 +3,16 @@ import json
 import re
 import sys
 import pathlib
+import string
 
 from .gemini import get_new_filename_from_gemini
+
+class SafeFormatter(string.Formatter):
+    def get_value(self, key, args, kwargs):
+        if isinstance(key, str):
+            return kwargs.get(key, '')
+        else:
+            return super().get_value(key, args, kwargs)
 
 def parse_gemini_response(response_text: str):
     """
@@ -30,34 +38,40 @@ def parse_gemini_response(response_text: str):
         print(f"Unknown error while parsing response: {e}", file=sys.stderr)
         return None
 
-def format_new_name(info: dict):
+def format_new_name(info: dict, template: str = None):
     """
     Builds the new filename from the structured info and sanitizes it.
     Returns (str: safe_name) or (None).
     """
-    tipo = info.get("type")
-    parts = []
-
-    if tipo == "notes":
-        parts = [info.get("subject"), info.get("year"), info.get("author")]
-    elif tipo == "exam":
-        parts = [info.get("subject"), info.get("date")]
-    elif tipo == "book":
-        parts = [info.get("title"), info.get("author")]
-    elif tipo == "paper":
-        parts = [info.get("title"), info.get("first_author"), info.get("year")]
-    elif tipo == "other":
-        parts = [info.get("title"), info.get("subject")]
+    if template:
+        # Find all placeholders like {key}
+        keys = re.findall(r'{([^}]+)}', template)
+        parts = [info.get(key) for key in keys]
+        final_name = "_".join(p for p in parts if p)
     else:
-        parts = [info.get("title"), info.get("subject")]
+        tipo = info.get("type")
+        parts = []
 
-    final_name = "_".join(p for p in parts if p)
+        if tipo == "notes":
+            parts = [info.get("subject"), info.get("year"), info.get("author")]
+        elif tipo == "exam":
+            parts = [info.get("subject"), info.get("date")]
+        elif tipo == "book":
+            parts = [info.get("title"), info.get("author")]
+        elif tipo == "paper":
+            parts = [info.get("title"), info.get("first_author"), info.get("year")]
+        elif tipo == "other":
+            parts = [info.get("title"), info.get("subject")]
+        else:
+            parts = [info.get("title"), info.get("subject")]
+
+        final_name = "_".join(p for p in parts if p)
 
     if not final_name:
         return None
 
     safe_name = final_name.replace(" ", "_")
-    safe_name = re.sub(r'[^\w\-_]', '', safe_name)
+    safe_name = re.sub(r'[^\w\-_.]', '', safe_name)
     safe_name = re.sub(r'[_.-]+', '_', safe_name)
     safe_name = safe_name.strip('_')
 
@@ -80,7 +94,7 @@ def get_unique_path(path: pathlib.Path) -> pathlib.Path:
             return new_path
         counter += 1
 
-def process_and_rename_file(filepath: pathlib.Path, model_name: str, disable_thinking: bool, dry_run: bool = False, on_conflict: str = "skip") -> tuple:
+def process_and_rename_file(filepath: pathlib.Path, model_name: str, disable_thinking: bool, dry_run: bool = False, on_conflict: str = "skip", template: str = None, context: str = None, max_pages: int = None) -> tuple:
     """
     Worker function to process a single file.
     This function performs all steps: API call, parsing, formatting, and renaming.
@@ -90,7 +104,9 @@ def process_and_rename_file(filepath: pathlib.Path, model_name: str, disable_thi
     raw_response = get_new_filename_from_gemini(
         filepath,
         model_name,
-        disable_thinking
+        disable_thinking,
+        context,
+        max_pages
     )
     if not raw_response:
         return (filepath, None, "Gemini API call failed")
@@ -101,7 +117,7 @@ def process_and_rename_file(filepath: pathlib.Path, model_name: str, disable_thi
         return (filepath, None, "Failed to parse Gemini JSON response")
 
     # 3. Format the new name
-    new_base_name = format_new_name(info)
+    new_base_name = format_new_name(info, template)
     if not new_base_name:
         return (filepath, None, f"Could not generate a valid name from info: {info}")
 

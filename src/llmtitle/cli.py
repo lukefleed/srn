@@ -75,6 +75,27 @@ def setup_arg_parser():
     )
 
     parser.add_argument(
+        "-t", "--template",
+        type=str,
+        default=DEFAULT_TEMPLATE,
+        help="Custom filename template (e.g., '{title}_{author}_{year}').",
+    )
+
+    parser.add_argument(
+        "--context",
+        type=str,
+        help="Additional context to provide to the AI model.",
+    )
+
+    parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=None,
+        metavar="NUM",
+        help="Maximum number of pages to process for PDF files.",
+    )
+
+    parser.add_argument(
         "--on-conflict",
         type=str,
         default="skip",
@@ -135,7 +156,10 @@ def main():
         model_name=args.model,
         disable_thinking=args.no_thinking,
         dry_run=args.dry_run,
-        on_conflict=args.on_conflict
+        on_conflict=args.on_conflict,
+        template=args.template,
+        context=args.context,
+        max_pages=args.max_pages
     )
 
     # --- Execution ---
