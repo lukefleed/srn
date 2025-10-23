@@ -12,7 +12,7 @@ USAGE:
 
 """
 
-from llmtitle.cli import main
+from srn.cli import main
 
 if __name__ == "__main__":
     main()

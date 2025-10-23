@@ -36,7 +36,7 @@ To package and install `srn` for global use on your system:
     Assuming your virtual environment is `.venv` in the project root, add the following line to your shell's configuration file (e.g., `~/.bashrc` or `~/.zshrc`):
 
     ```bash
-    export PATH="/home/lukefleed/github/llmtitle/.venv/bin:$PATH"
+    export PATH="/path/to/your/project/.venv/bin:$PATH"
     ```
     After saving, open a new terminal or run `source ~/.bashrc` (or `source ~/.zshrc`).
 
