@@ -11,7 +11,7 @@ from . import utils
 from . import gemini
 from . import credentials
 
-DEFAULT_EXTENSIONS = "pdf"
+DEFAULT_EXTENSIONS = "pdf,doc,docx,txt,ppt,pptx,xls,xlsx"
 
 def setup_arg_parser():
     """Configures and returns the argparse.ArgumentParser."""
@@ -119,9 +119,8 @@ Only used with the -r option. (Default: CPU core count).""",
         type=str,
         default=DEFAULT_EXTENSIONS,
         metavar="EXTENSIONS",
-        help=f"""Comma-separated file extensions to process (e.g., pdf,tex).
-Only used with the -r option. (Default: "{DEFAULT_EXTENSIONS}").""",
-    )
+        help=f"""Comma-separated file extensions to process (e.g., pdf,doc,txt).
+Only used with the -r option. (Default: "{DEFAULT_EXTENSIONS}")."""),
 
     parser.add_argument(
         "-n", "--dry-run",

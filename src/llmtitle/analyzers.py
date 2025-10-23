@@ -50,7 +50,7 @@ class DocumentAnalyzer(Analyzer):
             """
 
         return f"""
-        Analyze the content of this file (the first 2-3 pages are likely sufficient).
+        Analyze the content of this file.
         It is often an academic document (lecture notes, exam, book, or scientific paper),
         but it could be any general document.
 
@@ -94,32 +94,21 @@ class DocumentAnalyzer(Analyzer):
 
         mime_type = get_file_mime_type(filepath)
 
-        if mime_type == 'application/pdf' and max_pages is not None and max_pages > 0:
-            try:
-                reader = PdfReader(filepath)
-                text_content = ""
-                for i, page in enumerate(reader.pages):
-                    if i >= max_pages:
-                        break
-                    text_content += page.extract_text() or ""
-                
-                file_part = types.Part.from_text(text=text_content)
-
-            except Exception as e:
-                print(f"Error reading PDF file '{filepath}': {e}", file=sys.stderr)
-                return None, 0
-        else:
-            try:
-                file_data = filepath.read_bytes()
-                file_part = types.Part.from_bytes(
-                    data=file_data,
-                    mime_type=mime_type
-                )
-            except Exception as e:
-                print(f"Error reading file '{filepath}': {e}", file=sys.stderr)
-                return None, 0
+        try:
+            file_data = filepath.read_bytes()
+            file_part = types.Part.from_bytes(
+                data=file_data,
+                mime_type=mime_type
+            )
+        except Exception as e:
+            print(f"Error reading file '{filepath}': {e}", file=sys.stderr)
+            return None, 0
 
         prompt = self._build_document_prompt(context)
+
+        # If max_pages is specified, add it to the prompt instructions
+        if max_pages is not None and max_pages > 0:
+            prompt += f"\nAnalyze only the first {max_pages} pages of the document."
 
         gen_config = None
         if disable_thinking:
