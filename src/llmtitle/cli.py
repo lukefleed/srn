@@ -9,23 +9,69 @@ from functools import partial
 from . import core
 from . import utils
 from . import gemini
+from . import credentials
 
 DEFAULT_EXTENSIONS = "pdf"
 
 def setup_arg_parser():
     """Configures and returns the argparse.ArgumentParser."""
     parser = argparse.ArgumentParser(
-        description="Automatically rename files based on their content using Gemini.",
-        usage="%(prog)s [options] FILE_OR_DIR [FILE_OR_DIR ...]",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=__doc__ # Use the module docstring as the epilog
+        description="""llm-title: An intelligent file renamer powered by Gemini.
+
+This tool analyzes the content of your files (currently PDFs) and suggests
+more descriptive and organized filenames, leveraging the power of Google Gemini's
+large language models. Ideal for organizing academic documents, research papers,
+or any collection of files that needs consistent and meaningful naming.""",
+        usage="%(prog)s [OPTIONS] [FILE_OR_DIRECTORY ...]",
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog="""Examples:
+  llm-title --api-key
+    Prompts to enter your Gemini API key and saves it securely.
+
+  llm-title my_document.pdf
+    Renames a single PDF file based on its content.
+
+  llm-title -r ~/Documents/Research/
+    Recursively processes all PDF files in a directory and its subdirectories.
+
+  llm-title -r --ext pdf,tex ~/Projects/
+    Recursively processes PDF and TeX files in a directory.
+
+  llm-title -n my_report.pdf
+    Performs a "dry run" to see suggested names without actually renaming files.
+
+  llm-title -t "{title} - {author} ({year})" article.pdf
+    Renames a file using a custom template. Available fields depend on the file
+    content and the model's ability to extract them. If omitted, the model will
+    try to deduce the best name.
+
+  llm-title --model gemini-2.5-flash-lite -r ~/Downloads/
+    Uses a specific Gemini model to process files in a directory.
+
+  llm-title --on-conflict overwrite old_file.pdf
+    Overwrites an existing file in case of a name conflict.
+
+  llm-title --context "This is a quantum physics document." paper.pdf
+    Provides additional context to the AI model to improve the relevance of the
+    suggested filename.
+
+For more details, visit the project documentation.
+"""
+    )
+
+    parser.add_argument(
+        "--api-key",
+        action="store_true",
+        help="""Prompts for the Gemini API key and saves it securely for future use.
+The key is stored in ~/.llmtitle/.env with restricted permissions.""",
     )
 
     parser.add_argument(
         "input_paths",
         type=str,
-        nargs='+',
-        help="One or more paths to files or directories to process."
+        nargs='*',
+        help="""One or more paths to files or directories to process.
+If directories are specified, the -r (recursive) option is recommended.""",
     )
 
     # Verbosity group
@@ -34,27 +80,29 @@ def setup_arg_parser():
         "-v", "--verbose",
         action="store_true",
         default=True,
-        help="Enable verbose output (default)."
+        help="Enable verbose output (default).",
     )
     verbosity_group.add_argument(
         "-q", "--quiet",
         action="store_true",
         default=False,
-        help="Suppress all output except for errors."
+        help="Suppress all output except for errors.",
     )
 
     parser.add_argument(
         "--no-thinking",
         action="store_true",
         default=False,
-        help="Disable the 'thinking' feature for the model."
+        help="""Disables the AI model's "thinking" phase, potentially speeding up
+the process but possibly reducing the quality of suggested names.""",
     )
 
     parser.add_argument(
         "-r", "--recursive",
         action="store_true",
         default=False,
-        help="Enable recursive batch processing for directories or multiple files."
+        help="""Enables recursive batch processing for directories or multiple files.
+When used with directories, it searches for files specified by --ext.""",
     )
 
     parser.add_argument(
@@ -62,7 +110,8 @@ def setup_arg_parser():
         type=int,
         default=None,
         metavar="NUM",
-        help="Number of parallel jobs (threads). Only used with -r. (Default: CPU count)"
+        help="""Number of parallel jobs (threads) to use.
+Only used with the -r option. (Default: CPU core count).""",
     )
 
     parser.add_argument(
@@ -70,35 +119,50 @@ def setup_arg_parser():
         type=str,
         default=DEFAULT_EXTENSIONS,
         metavar="EXTENSIONS",
-        help=f"Comma-separated file extensions to process (e.g., pdf,tex). Only used with -r. (Default: \"{DEFAULT_EXTENSIONS}\")"
+        help=f"""Comma-separated file extensions to process (e.g., pdf,tex).
+Only used with the -r option. (Default: "{DEFAULT_EXTENSIONS}").""",
     )
 
     parser.add_argument(
         "-n", "--dry-run",
         action="store_true",
         default=False,
-        help="Perform a dry run without renaming files.",
+        help="""Performs a simulation without actually renaming files,
+only showing the suggested names.""",
     )
 
     parser.add_argument(
         "-t", "--template",
         type=str,
-        default=DEFAULT_TEMPLATE,
-        help="Custom filename template (e.g., '{title}_{author}_{year}').",
+        help="""Custom filename template (e.g., '{title}_{author}_{year}').
+Available fields depend on the file content and the model's ability to extract
+such information. If omitted, the model will try to deduce the best name.""",
     )
 
     parser.add_argument(
         "--context",
         type=str,
-        help="Additional context to provide to the AI model.",
+        help="""Additional context to provide to the AI model to help it
+generate more relevant filenames.""",
     )
 
     parser.add_argument(
         "--max-pages",
         type=int,
-        default=None,
+        default=5,
         metavar="NUM",
-        help="Maximum number of pages to process for PDF files.",
+        help="""Maximum number of pages to process for PDF files.
+Useful for very large files to limit token consumption.""",
+    )
+
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=gemini.DEFAULT_MODEL,
+        choices=gemini.ALLOWED_MODELS,
+        help=f"""Specify the Gemini model to use.
+(Default: {gemini.DEFAULT_MODEL}).
+Available models: {', '.join(gemini.ALLOWED_MODELS)}.""",
     )
 
     parser.add_argument(
@@ -106,7 +170,10 @@ def setup_arg_parser():
         type=str,
         default="skip",
         choices=["skip", "overwrite", "rename"],
-        help="Action to take on filename conflict: skip (default), overwrite, or rename.",
+        help="""Action to take on filename conflict:
+  skip: skips the file (default).
+  overwrite: overwrites the existing file.
+  rename: adds a numeric suffix to avoid conflicts.""",
     )
 
     return parser
@@ -114,6 +181,15 @@ def setup_arg_parser():
 def main():
     parser = setup_arg_parser()
     args = parser.parse_args()
+
+    if args.api_key:
+        credentials.prompt_for_api_key()
+        sys.exit(0)
+        return # Ensure the function exits
+
+    # Manual validation for input_paths if --api-key is not used
+    if not args.api_key and not args.input_paths:
+        parser.error("The following arguments are required: input_paths")
 
     # --- Argument Validation ---
     if not args.recursive:
