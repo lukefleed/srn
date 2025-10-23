@@ -3,41 +3,9 @@ import json
 import re
 import sys
 import pathlib
-import string
 
-from .gemini import get_new_filename_from_gemini
-from .utils import ThreadSafeCounter
-
-class SafeFormatter(string.Formatter):
-    def get_value(self, key, args, kwargs):
-        if isinstance(key, str):
-            return kwargs.get(key, '')
-        else:
-            return super().get_value(key, args, kwargs)
-
-def parse_gemini_response(response_text: str):
-    """
-    Extracts and parses the JSON from Gemini's response.
-    Returns (dict: data) on success, or (None) on failure.
-    """
-    if not response_text:
-        print(f"Error: Gemini's response was empty.", file=sys.stderr)
-        return None
-
-    try:
-        clean_text = response_text.strip().replace("```json", "").replace("```", "").strip()
-        if not clean_text:
-             print(f"Error: Gemini's response was empty after cleaning.", file=sys.stderr)
-             return None
-        data = json.loads(clean_text)
-        return data
-    except json.JSONDecodeError:
-        print(f"Error: Gemini's response was not valid JSON.", file=sys.stderr)
-        print(f"Response received: {response_text}", file=sys.stderr)
-        return None
-    except Exception as e:
-        print(f"Unknown error while parsing response: {e}", file=sys.stderr)
-        return None
+from .analyzers import DocumentAnalyzer, MediaAnalyzer
+from .utils import ThreadSafeCounter, get_file_mime_type
 
 def format_new_name(info: dict, template: str = None):
     """
@@ -101,13 +69,20 @@ def process_and_rename_file(filepath: pathlib.Path, model_name: str, disable_thi
     This function performs all steps: API call, parsing, formatting, and renaming.
     Returns a tuple: (original_path, new_path, status_message)
     """
-    # 1. Call Gemini
-    raw_response, token_count = get_new_filename_from_gemini(
+    # 1. Choose analyzer based on file type
+    mime_type = get_file_mime_type(filepath)
+    if mime_type.startswith('video') or mime_type.startswith('audio') or mime_type.startswith('image'):
+        analyzer = MediaAnalyzer()
+    else:
+        analyzer = DocumentAnalyzer()
+
+    # 2. Analyze the file
+    raw_response, token_count = analyzer.analyze(
         filepath,
-        model_name,
-        disable_thinking,
-        context,
-        max_pages
+        model_name=model_name,
+        disable_thinking=disable_thinking,
+        context=context,
+        max_pages=max_pages
     )
     if token_counter and token_count > 0:
         token_counter.increment(token_count)
@@ -115,17 +90,17 @@ def process_and_rename_file(filepath: pathlib.Path, model_name: str, disable_thi
     if not raw_response:
         return (filepath, None, "Gemini API call failed")
 
-    # 2. Parse the JSON response
-    info = parse_gemini_response(raw_response)
+    # 3. Parse the JSON response
+    info = analyzer.parse_gemini_response(raw_response)
     if not info:
         return (filepath, None, "Failed to parse Gemini JSON response")
 
-    # 3. Format the new name
+    # 4. Format the new name
     new_base_name = format_new_name(info, template)
     if not new_base_name:
         return (filepath, None, f"Could not generate a valid name from info: {info}")
 
-    # 4. Handle conflicts
+    # 5. Handle conflicts
     file_extension = filepath.suffix
     new_filename = f"{new_base_name}{file_extension}"
     new_filepath = filepath.with_name(new_filename)

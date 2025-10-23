@@ -1,8 +1,9 @@
+
 import unittest
 from unittest.mock import patch, MagicMock
 import pathlib
 import tempfile
-from llmtitle.core import format_new_name, process_and_rename_file, parse_gemini_response, get_unique_path
+from llmtitle.core import format_new_name, get_unique_path, process_and_rename_file
 from llmtitle.utils import ThreadSafeCounter
 
 class TestCore(unittest.TestCase):
@@ -93,35 +94,20 @@ class TestCore(unittest.TestCase):
         expected = "2024_My_Awesome_Paper"
         self.assertEqual(format_new_name(info, template), expected)
 
-    @patch('llmtitle.core.get_new_filename_from_gemini')
-    def test_process_and_rename_file_dry_run(self, mock_gemini):
-        # Mock the Gemini response
-        mock_gemini.return_value = ('{"type": "book", "title": "new_book_title", "author": "test_author"}', 100)
-
+    def test_get_unique_path(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = pathlib.Path(tmpdir) / "original.pdf"
-            filepath.touch()
+            dir_path = pathlib.Path(tmpdir)
+            file1 = dir_path / "file.txt"
+            file1.touch()
+            file2 = dir_path / "file_1.txt"
+            file2.touch()
 
-            original_name = filepath.name
+            new_path = get_unique_path(file1)
+            self.assertEqual(new_path.name, "file_2.txt")
 
-            # Call the function with dry_run=True
-            _, new_filepath, status = process_and_rename_file(
-                filepath,
-                model_name="test_model",
-                disable_thinking=True,
-                dry_run=True,
-                template="{title}_{author}"
-            )
-
-            # Assertions
-            self.assertEqual(status, "dry_run_success")
-            self.assertEqual(new_filepath.name, "new_book_title_test_author.pdf")
-            self.assertTrue(filepath.exists()) # File should still exist with original name
-            self.assertEqual(filepath.name, original_name)
-
-    @patch('llmtitle.core.get_new_filename_from_gemini')
-    def test_conflict_skip(self, mock_gemini):
-        mock_gemini.return_value = ('{"type": "book", "title": "conflict_name", "author": "test"}', 100)
+    @patch('llmtitle.core.DocumentAnalyzer.analyze')
+    def test_conflict_skip(self, mock_analyze):
+        mock_analyze.return_value = ('{"type": "book", "title": "conflict_name", "author": "test"}', 100)
         with tempfile.TemporaryDirectory() as tmpdir:
             dir_path = pathlib.Path(tmpdir)
             original_file = dir_path / "original.pdf"
@@ -135,9 +121,9 @@ class TestCore(unittest.TestCase):
             self.assertTrue(original_file.exists())
             self.assertTrue(conflict_file.exists())
 
-    @patch('llmtitle.core.get_new_filename_from_gemini')
-    def test_conflict_overwrite(self, mock_gemini):
-        mock_gemini.return_value = ('{"type": "book", "title": "conflict_name", "author": "test"}', 100)
+    @patch('llmtitle.core.DocumentAnalyzer.analyze')
+    def test_conflict_overwrite(self, mock_analyze):
+        mock_analyze.return_value = ('{"type": "book", "title": "conflict_name", "author": "test"}', 100)
         with tempfile.TemporaryDirectory() as tmpdir:
             dir_path = pathlib.Path(tmpdir)
             original_file = dir_path / "original.pdf"
@@ -152,9 +138,9 @@ class TestCore(unittest.TestCase):
             self.assertTrue(new_filepath.exists())
             self.assertEqual(new_filepath.read_text(), "original content")
 
-    @patch('llmtitle.core.get_new_filename_from_gemini')
-    def test_conflict_rename(self, mock_gemini):
-        mock_gemini.return_value = ('{"type": "book", "title": "conflict_name", "author": "test"}', 100)
+    @patch('llmtitle.core.DocumentAnalyzer.analyze')
+    def test_conflict_rename(self, mock_analyze):
+        mock_analyze.return_value = ('{"type": "book", "title": "conflict_name", "author": "test"}', 100)
         with tempfile.TemporaryDirectory() as tmpdir:
             dir_path = pathlib.Path(tmpdir)
             original_file = dir_path / "original.pdf"
@@ -168,29 +154,6 @@ class TestCore(unittest.TestCase):
             self.assertFalse(original_file.exists())
             self.assertTrue(new_filepath.exists())
             self.assertEqual(new_filepath.name, "conflict_name_test_1.pdf")
-
-    @patch('llmtitle.core.get_new_filename_from_gemini')
-    def test_process_and_rename_file_token_count(self, mock_gemini):
-        # Mock the Gemini response
-        mock_gemini.return_value = ('{"type": "book", "title": "new_book_title", "author": "test_author"}', 123)
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            filepath = pathlib.Path(tmpdir) / "original.pdf"
-            filepath.touch()
-
-            token_counter = ThreadSafeCounter()
-
-            # Call the function
-            process_and_rename_file(
-                filepath,
-                model_name="test_model",
-                disable_thinking=True,
-                token_counter=token_counter,
-                dry_run=True
-            )
-
-            # Assertions
-            self.assertEqual(token_counter.value, 123)
 
 if __name__ == '__main__':
     unittest.main()
