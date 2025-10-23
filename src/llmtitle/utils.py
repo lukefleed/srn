@@ -2,6 +2,23 @@
 import mimetypes
 import pathlib
 import sys
+import threading
+
+class ThreadSafeCounter:
+    """A simple counter that is safe to use across multiple threads."""
+    def __init__(self, initial_value: int = 0):
+        self._value = initial_value
+        self._lock = threading.Lock()
+
+    def increment(self, amount: int = 1):
+        """Increments the counter by a given amount in a thread-safe way."""
+        with self._lock:
+            self._value += amount
+
+    @property
+    def value(self) -> int:
+        """Returns the current value of the counter."""
+        return self._value
 
 class TerminalColors:
     """ANSI color codes for terminal output."""
@@ -13,10 +30,10 @@ class TerminalColors:
 
 def get_file_mime_type(filepath: pathlib.Path):
     """Guesses the file's MIME type from its path."""
+    if filepath.suffix in ['.tex', '.md', '.txt']:
+        return 'text/plain'
     mime_type, _ = mimetypes.guess_type(filepath)
     if mime_type is None:
-        if filepath.suffix in ['.tex', '.txt', '.md']:
-            return 'text/plain'
         return 'application/octet-stream'
     return mime_type
 

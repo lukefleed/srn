@@ -71,14 +71,14 @@ def build_gemini_prompt(context: str = None):
     If a piece of information required by the rules is not present, its value must be null.
     """
 
-def get_new_filename_from_gemini(filepath: pathlib.Path, model_name: str, disable_thinking: bool = False, context: str = None, max_pages: int = None):
+def get_new_filename_from_gemini(filepath: pathlib.Path, model_name: str, disable_thinking: bool = False, context: str = None, max_pages: int = None) -> tuple[str, int]:
     """
-    Loads the file, queries the Gemini API, and returns the raw text response.
-    Returns (str: response_text) on success, or (None) on failure.
+    Loads the file, queries the Gemini API, and returns the raw text response and token count.
+    Returns (str: response_text, int: total_token_count) on success, or (None, 0) on failure.
     """
     if not filepath.exists():
         print(f"Error: File '{filepath}' does not exist.", file=sys.stderr)
-        return None
+        return None, 0
 
     mime_type = get_file_mime_type(filepath)
 
@@ -95,7 +95,7 @@ def get_new_filename_from_gemini(filepath: pathlib.Path, model_name: str, disabl
 
         except Exception as e:
             print(f"Error reading PDF file '{filepath}': {e}", file=sys.stderr)
-            return None
+            return None, 0
     else:
         try:
             file_data = filepath.read_bytes()
@@ -105,7 +105,7 @@ def get_new_filename_from_gemini(filepath: pathlib.Path, model_name: str, disabl
             )
         except Exception as e:
             print(f"Error reading file '{filepath}': {e}", file=sys.stderr)
-            return None
+            return None, 0
 
     prompt = build_gemini_prompt(context)
 
@@ -121,7 +121,7 @@ def get_new_filename_from_gemini(filepath: pathlib.Path, model_name: str, disabl
             contents=[file_part, prompt],
             config=gen_config
         )
-        return response.text
+        return response.text, response.usage_metadata.total_token_count
     except Exception as e:
         print(f"Error during Gemini API call for '{filepath.name}' (model: {model_name}): {e}", file=sys.stderr)
-        return None
+        return None, 0

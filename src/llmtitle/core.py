@@ -6,6 +6,7 @@ import pathlib
 import string
 
 from .gemini import get_new_filename_from_gemini
+from .utils import ThreadSafeCounter
 
 class SafeFormatter(string.Formatter):
     def get_value(self, key, args, kwargs):
@@ -94,20 +95,23 @@ def get_unique_path(path: pathlib.Path) -> pathlib.Path:
             return new_path
         counter += 1
 
-def process_and_rename_file(filepath: pathlib.Path, model_name: str, disable_thinking: bool, dry_run: bool = False, on_conflict: str = "skip", template: str = None, context: str = None, max_pages: int = None) -> tuple:
+def process_and_rename_file(filepath: pathlib.Path, model_name: str, disable_thinking: bool, dry_run: bool = False, on_conflict: str = "skip", template: str = None, context: str = None, max_pages: int = None, token_counter: ThreadSafeCounter = None) -> tuple:
     """
     Worker function to process a single file.
     This function performs all steps: API call, parsing, formatting, and renaming.
     Returns a tuple: (original_path, new_path, status_message)
     """
     # 1. Call Gemini
-    raw_response = get_new_filename_from_gemini(
+    raw_response, token_count = get_new_filename_from_gemini(
         filepath,
         model_name,
         disable_thinking,
         context,
         max_pages
     )
+    if token_counter and token_count > 0:
+        token_counter.increment(token_count)
+
     if not raw_response:
         return (filepath, None, "Gemini API call failed")
 

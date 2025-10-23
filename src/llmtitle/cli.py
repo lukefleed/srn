@@ -28,13 +28,19 @@ def setup_arg_parser():
         help="One or more paths to files or directories to process."
     )
 
-    parser.add_argument(
-        "-m", "--model",
-        type=str,
-        default=gemini.DEFAULT_MODEL,
-        choices=gemini.ALLOWED_MODELS,
-        metavar="MODEL",
-        help=f"Specify the Gemini model. (Default: {gemini.DEFAULT_MODEL})"
+    # Verbosity group
+    verbosity_group = parser.add_mutually_exclusive_group()
+    verbosity_group.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        default=True,
+        help="Enable verbose output (default)."
+    )
+    verbosity_group.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        default=False,
+        help="Suppress all output except for errors."
     )
 
     parser.add_argument(
@@ -151,6 +157,7 @@ def main():
         num_workers = min(desired_workers, len(files_to_process))
 
     # --- Setup Worker Function ---
+    token_counter = utils.ThreadSafeCounter()
     worker_func = partial(
         core.process_and_rename_file,
         model_name=args.model,
@@ -159,14 +166,16 @@ def main():
         on_conflict=args.on_conflict,
         template=args.template,
         context=args.context,
-        max_pages=args.max_pages
+        max_pages=args.max_pages,
+        token_counter=token_counter
     )
 
     # --- Execution ---
     if args.dry_run:
         print(f"{utils.TerminalColors.BOLD}--- DRY RUN MODE ---{utils.TerminalColors.ENDC}")
 
-    print(f"Found {len(files_to_process)} file(s). Processing with {num_workers} worker(s)...")
+    if not args.quiet:
+        print(f"Found {len(files_to_process)} file(s). Processing with {num_workers} worker(s)...")
 
     success_count = 0
     skipped_count = 0
@@ -182,23 +191,24 @@ def main():
             executor.shutdown(wait=False, cancel_futures=True)
             sys.exit(1)
 
-    print(f"\n{utils.TerminalColors.BOLD}--- Processing Complete ---{utils.TerminalColors.ENDC}")
-    for original, new, status in results:
-        if status == "success":
-            print(f"{utils.TerminalColors.GREEN}[OK] Renamed:{utils.TerminalColors.ENDC}\n     {original.name}\n  -> {new.name}")
-            success_count += 1
-        elif status == "dry_run_success":
-            print(f"{utils.TerminalColors.GREEN}[DRY-RUN] Would rename:{utils.TerminalColors.ENDC}\n     {original.name}\n  -> {new.name}")
-            dry_run_count += 1
-        elif status == "skipped":
-            print(f"{utils.TerminalColors.YELLOW}[SKIP] Name already correct: {original.name}{utils.TerminalColors.ENDC}")
-            skipped_count += 1
-        elif status == "conflict_skipped":
-            print(f"{utils.TerminalColors.YELLOW}[SKIP] Conflict: {new.name} already exists.{utils.TerminalColors.ENDC}")
-            conflict_count += 1
-        else:
-            print(f"{utils.TerminalColors.RED}[FAIL] {original.name}\n     Error: {status}{utils.TerminalColors.ENDC}", file=sys.stderr)
-            error_count += 1
+    if not args.quiet:
+        print(f"\n{utils.TerminalColors.BOLD}--- Processing Complete ---{utils.TerminalColors.ENDC}")
+        for original, new, status in results:
+            if status == "success":
+                print(f"{utils.TerminalColors.GREEN}[OK] Renamed:{utils.TerminalColors.ENDC}\n     {original.name}\n  -> {new.name}")
+                success_count += 1
+            elif status == "dry_run_success":
+                print(f"{utils.TerminalColors.GREEN}[DRY-RUN] Would rename:{utils.TerminalColors.ENDC}\n     {original.name}\n  -> {new.name}")
+                dry_run_count += 1
+            elif status == "skipped":
+                print(f"{utils.TerminalColors.YELLOW}[SKIP] Name already correct: {original.name}{utils.TerminalColors.ENDC}")
+                skipped_count += 1
+            elif status == "conflict_skipped":
+                print(f"{utils.TerminalColors.YELLOW}[SKIP] Conflict: {new.name} already exists.{utils.TerminalColors.ENDC}")
+                conflict_count += 1
+            else:
+                print(f"{utils.TerminalColors.RED}[FAIL] {original.name}\n     Error: {status}{utils.TerminalColors.ENDC}", file=sys.stderr)
+                error_count += 1
 
     print(f"\n{utils.TerminalColors.BOLD}--- Summary ---{utils.TerminalColors.ENDC}")
     if args.dry_run:
@@ -211,6 +221,8 @@ def main():
         print(f"{utils.TerminalColors.RED}Failed:     {error_count}{utils.TerminalColors.ENDC}")
     else:
         print(f"Failed:     {error_count}")
+    
+    print(f"Total tokens used: {token_counter.value}")
 
     if error_count > 0:
         sys.exit(1)
