@@ -6,6 +6,7 @@ from pypdf import PdfReader
 from tinytag import TinyTag
 from google import genai
 from google.genai import types
+from . import gemini
 from .utils import get_file_mime_type
 
 class Analyzer(ABC):
@@ -39,7 +40,7 @@ class DocumentAnalyzer(Analyzer):
             print(f"Unknown error while parsing response: {e}", file=sys.stderr)
             return None
 
-    def _build_document_prompt(self, context: str = None) -> str:
+    def _build_document_prompt(self, filepath: pathlib.Path, context: str = None) -> str:
         context_prompt = ""
         if context:
             context_prompt = f"""
@@ -49,8 +50,12 @@ class DocumentAnalyzer(Analyzer):
             ---
             """
 
+        parent_dir = filepath.parent
+        grandparent_dir = parent_dir.parent
+        last_two_dirs = f"{grandparent_dir.name}/{parent_dir.name}"
+
         return f"""
-        Analyze the content of this file.
+        Analyze the content of this file. The original filename is '{filepath.name}'. The file is located in the path '{last_two_dirs}'.
         It is often an academic document (lecture notes, exam, book, or scientific paper),
         but it could be any general document.
 
@@ -104,7 +109,7 @@ class DocumentAnalyzer(Analyzer):
             print(f"Error reading file '{filepath}': {e}", file=sys.stderr)
             return None, 0
 
-        prompt = self._build_document_prompt(context)
+        prompt = self._build_document_prompt(filepath, context)
 
         # If max_pages is specified, add it to the prompt instructions
         if max_pages is not None and max_pages > 0:
@@ -154,7 +159,7 @@ class MediaAnalyzer(Analyzer):
             print(f"Unknown error while parsing response: {e}", file=sys.stderr)
             return None
             
-    def _build_media_prompt(self, filename: str, metadata: dict, context: str = None) -> str:
+    def _build_media_prompt(self, filepath: pathlib.Path, filename: str, metadata: dict, context: str = None) -> str:
         context_prompt = ""
         if context:
             context_prompt = f"""
@@ -164,8 +169,13 @@ class MediaAnalyzer(Analyzer):
             ---
             """
 
+        parent_dir = filepath.parent
+        grandparent_dir = parent_dir.parent
+        last_two_dirs = f"{grandparent_dir.name}/{parent_dir.name}"
+
         return f"""
         You are a file organization expert. Your task is to suggest a clean, descriptive filename for a media file.
+        It is important to consider the current filename: {filename}. The file is located in the path '{last_two_dirs}'.
         
         Analyze the following information:
         - Current Filename: {filename}
@@ -194,7 +204,7 @@ class MediaAnalyzer(Analyzer):
             print(f"Error reading metadata from '{filepath}': {e}", file=sys.stderr)
             metadata = {}
 
-        prompt = self._build_media_prompt(filepath.name, metadata, context)
+        prompt = self._build_media_prompt(filepath, filepath.name, metadata, context)
 
         gen_config = None
         if disable_thinking:
