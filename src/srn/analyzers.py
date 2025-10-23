@@ -100,11 +100,17 @@ class DocumentAnalyzer(Analyzer):
         mime_type = get_file_mime_type(filepath)
 
         try:
-            file_data = filepath.read_bytes()
-            file_part = types.Part.from_bytes(
-                data=file_data,
-                mime_type=mime_type
-            )
+            if mime_type == "application/pdf":
+                reader = PdfReader(filepath)
+                text_content = ""
+                for i, page in enumerate(reader.pages):
+                    if max_pages is not None and i >= max_pages:
+                        break
+                    text_content += page.extract_text() + "\n"
+                file_part = types.Part.from_text(text=text_content)
+            else:
+                file_data = filepath.read_bytes()
+                file_part = types.Part.from_bytes(data=file_data, mime_type=mime_type)
         except Exception as e:
             print(f"Error reading file '{filepath}': {e}", file=sys.stderr)
             return None, 0
