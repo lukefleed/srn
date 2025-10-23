@@ -16,8 +16,8 @@ def mock_prompt_for_api_key():
         yield mock_prompt
 
 def test_api_key_flag_prompts_and_exits(mock_sys_exit, mock_prompt_for_api_key):
-    # Simulate command line arguments: llm-title --api-key
-    with patch.object(sys, "argv", ["llm-title", "--api-key"]):
+    # Simulate command line arguments: srn --api-key
+    with patch.object(sys, "argv", ["srn", "--api-key"]):
         cli.main()
         mock_prompt_for_api_key.assert_called_once()
         mock_sys_exit.assert_called_once_with(0)

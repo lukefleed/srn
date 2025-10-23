@@ -6,11 +6,11 @@ from . import credentials
 try:
     api_key = credentials.load_api_key()
     if not api_key:
-        print("Error: Gemini API key not found. Please set the GEMINI_API_KEY environment variable or use 'llm-title --api-key' to save it.", file=sys.stderr)
+        print("Error: Gemini API key not found. Please set the GEMINI_API_KEY environment variable or use 'srn --api-key' to save it.", file=sys.stderr)
         sys.exit(1)
     client = genai.Client(api_key=api_key)
 except Exception as e:
-    print(f"Error: Could not initialize Gemini client. Make sure the GEMINI_API_KEY environment variable is set or saved using 'llm-title --api-key'.", file=sys.stderr)
+    print(f"Error: Could not initialize Gemini client. Make sure the GEMINI_API_KEY environment variable is set or saved using 'srn --api-key'.", file=sys.stderr)
     print(f"Error detail: {e}", file=sys.stderr)
     sys.exit(1)
 

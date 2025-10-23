@@ -3,6 +3,22 @@
 
 `srn` is a command-line tool that uses Google Gemini to intelligently rename files based on their content. It is optimized for academic documents like papers, books, and notes but can be applied to any text-based file.
 
+## Quick Start
+
+To get `srn` up and running quickly after cloning the repository:
+
+1.  **Install dependencies and the project in editable mode:**
+    ```bash
+    uv pip install -e .
+    ```
+    This command will create a virtual environment (if one doesn't exist) and install all necessary dependencies, making the `srn` command available within this environment.
+
+2.  **Run `srn`:**
+    ```bash
+    uv run srn --help
+    ```
+    This should now work "al primo colpo" and display the help message for `srn`.
+
 ## Installation
 
 This project uses `uv` for package management.
