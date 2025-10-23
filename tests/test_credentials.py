@@ -5,7 +5,7 @@ import json
 import pytest
 from unittest.mock import patch, MagicMock
 
-from llmtitle import credentials
+from srn import credentials
 
 # Mock the home directory for testing
 @pytest.fixture

@@ -1,5 +1,5 @@
 [project]
-name = "llmtitle"
+name = "srn"
 version = "0.1.0"
 description = "AI-Powered File Renamer using Google Gemini."
 readme = "README.md"
@@ -12,10 +12,11 @@ dependencies = [
     "pillow>=12.0.0",
     "pytesseract>=0.3.13",
     "pdf2image>=1.17.0",
+    "pathspec>=0.11.0",
 ]
 
 [project.scripts]
-llmtitle = "llmtitle.cli:main"
+srn = "srn.cli:main"
 
 [project.optional-dependencies]
 test = ["pytest", "unittest-xml-reporting"]

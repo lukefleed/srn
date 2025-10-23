@@ -2,8 +2,8 @@ import pytest
 import sys
 from unittest.mock import patch, MagicMock
 
-from llmtitle import cli
-from llmtitle import credentials
+from srn import cli
+from srn import credentials
 
 @pytest.fixture
 def mock_sys_exit():

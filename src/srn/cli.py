@@ -16,7 +16,7 @@ DEFAULT_EXTENSIONS = "pdf,doc,docx,txt,ppt,pptx,xls,xlsx"
 def setup_arg_parser():
     """Configures and returns the argparse.ArgumentParser."""
     parser = argparse.ArgumentParser(
-        description="""llm-title: An intelligent file renamer powered by Gemini.
+        description="""srn: An intelligent file renamer powered by Gemini.
 
 This tool analyzes the content of your files (currently PDFs) and suggests
 more descriptive and organized filenames, leveraging the power of Google Gemini's
@@ -25,33 +25,33 @@ or any collection of files that needs consistent and meaningful naming.""",
         usage="%(prog)s [OPTIONS] [FILE_OR_DIRECTORY ...]",
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""Examples:
-  llm-title --api-key
+  srn --api-key
     Prompts to enter your Gemini API key and saves it securely.
 
-  llm-title my_document.pdf
+  srn my_document.pdf
     Renames a single PDF file based on its content.
 
-  llm-title -r ~/Documents/Research/
+  srn -r ~/Documents/Research/
     Recursively processes all PDF files in a directory and its subdirectories.
 
-  llm-title -r --ext pdf,tex ~/Projects/
+  srn -r --ext pdf,tex ~/Projects/
     Recursively processes PDF and TeX files in a directory.
 
-  llm-title -n my_report.pdf
+  srn -n my_report.pdf
     Performs a "dry run" to see suggested names without actually renaming files.
 
-  llm-title -t "{title} - {author} ({year})" article.pdf
+  srn -t "{title} - {author} ({year})" article.pdf
     Renames a file using a custom template. Available fields depend on the file
     content and the model's ability to extract them. If omitted, the model will
     try to deduce the best name.
 
-  llm-title --model gemini-2.5-flash-lite -r ~/Downloads/
+  srn --model gemini-2.5-flash-lite -r ~/Downloads/
     Uses a specific Gemini model to process files in a directory.
 
-  llm-title --on-conflict overwrite old_file.pdf
+  srn --on-conflict overwrite old_file.pdf
     Overwrites an existing file in case of a name conflict.
 
-  llm-title --context "This is a quantum physics document." paper.pdf
+  srn --context "This is a quantum physics document." paper.pdf
     Provides additional context to the AI model to improve the relevance of the
     suggested filename.
 
@@ -63,7 +63,7 @@ For more details, visit the project documentation.
         "--api-key",
         action="store_true",
         help="""Prompts for the Gemini API key and saves it securely for future use.
-The key is stored in ~/.llmtitle/.env with restricted permissions.""",
+The key is stored in ~/.srn/.env with restricted permissions.""",
     )
 
     parser.add_argument(
@@ -120,7 +120,8 @@ Only used with the -r option. (Default: CPU core count).""",
         default=DEFAULT_EXTENSIONS,
         metavar="EXTENSIONS",
         help=f"""Comma-separated file extensions to process (e.g., pdf,doc,txt).
-Only used with the -r option. (Default: "{DEFAULT_EXTENSIONS}")."""),
+Only used with the -r option. (Default: "{DEFAULT_EXTENSIONS}")."""
+    )
 
     parser.add_argument(
         "-n", "--dry-run",

@@ -5,7 +5,7 @@ import stat
 import sys
 from dotenv import load_dotenv, set_key
 
-CREDENTIALS_DIR_NAME = ".llmtitle"
+CREDENTIALS_DIR_NAME = ".srn"
 ENV_FILE_NAME = ".env"
 API_KEY_VAR_NAME = "GEMINI_API_KEY"
 
