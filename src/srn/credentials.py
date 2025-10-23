@@ -39,8 +39,9 @@ def save_api_key(api_key: str):
 def load_api_key() -> str | None:
     """Loads the API key from the secure .env file or environment variables."""
     env_file_path = _get_env_file_path()
-    if env_file_path.exists():
-        load_dotenv(dotenv_path=env_file_path)
+    # Always load the dotenv file when trying to load the API key
+    # This ensures that the environment variables are set for the current process.
+    load_dotenv(dotenv_path=env_file_path)
     
     # Always check environment variables, as load_dotenv populates them
     return os.getenv(API_KEY_VAR_NAME)

@@ -117,7 +117,7 @@ class DocumentAnalyzer(Analyzer):
             )
 
         try:
-            client = genai.Client()
+            client = gemini.get_gemini_client()
             response = client.models.generate_content(
                 model=model_name,
                 contents=[file_part, prompt],
@@ -203,7 +203,7 @@ class MediaAnalyzer(Analyzer):
             )
 
         try:
-            client = genai.Client()
+            client = gemini.get_gemini_client()
             response = client.models.generate_content(
                 model=model_name,
                 contents=[prompt],
