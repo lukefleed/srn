@@ -1,9 +1,21 @@
 [project]
 name = "llmtitle"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-Powered File Renamer using Google Gemini."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "google-genai>=1.46.0",
+    "google-genai>=0.5.0",
 ]
+
+[project.scripts]
+llmtitle = "llmtitle.cli:main"
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "unittest-xml-reporting"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
