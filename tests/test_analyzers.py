@@ -1,13 +1,12 @@
-
 import unittest
 from unittest.mock import patch, MagicMock
 import pathlib
 import tempfile
-from llmtitle.analyzers import DocumentAnalyzer, MediaAnalyzer
+from srn.analyzers import DocumentAnalyzer, MediaAnalyzer
 
 class TestAnalyzers(unittest.TestCase):
 
-    @patch('llmtitle.analyzers.genai.Client')
+    @patch('srn.analyzers.genai.Client')
     def test_document_analyzer(self, mock_client):
         # Mock the Gemini API response
         mock_response = MagicMock()
@@ -25,8 +24,8 @@ class TestAnalyzers(unittest.TestCase):
             self.assertEqual(token_count, 100)
             self.assertIn("new_book_title", response_text)
 
-    @patch('llmtitle.analyzers.TinyTag.get')
-    @patch('llmtitle.analyzers.genai.Client')
+    @patch('srn.analyzers.TinyTag.get')
+    @patch('srn.analyzers.genai.Client') # Corrected this line
     def test_media_analyzer(self, mock_client, mock_tinytag):
         # Mock TinyTag
         mock_tag = MagicMock()

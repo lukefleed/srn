@@ -1,10 +1,9 @@
-
 import unittest
 from unittest.mock import patch, MagicMock
 import pathlib
 import tempfile
-from llmtitle.core import format_new_name, get_unique_path, process_and_rename_file
-from llmtitle.utils import ThreadSafeCounter
+from srn.core import format_new_name, get_unique_path, process_and_rename_file
+from srn.utils import ThreadSafeCounter
 
 class TestCore(unittest.TestCase):
 
@@ -105,7 +104,7 @@ class TestCore(unittest.TestCase):
             new_path = get_unique_path(file1)
             self.assertEqual(new_path.name, "file_2.txt")
 
-    @patch('llmtitle.core.DocumentAnalyzer.analyze')
+    @patch('srn.core.DocumentAnalyzer.analyze')
     def test_conflict_skip(self, mock_analyze):
         mock_analyze.return_value = ('{"type": "book", "title": "conflict_name", "author": "test"}', 100)
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -121,7 +120,7 @@ class TestCore(unittest.TestCase):
             self.assertTrue(original_file.exists())
             self.assertTrue(conflict_file.exists())
 
-    @patch('llmtitle.core.DocumentAnalyzer.analyze')
+    @patch('srn.core.DocumentAnalyzer.analyze') # Corrected this line
     def test_conflict_overwrite(self, mock_analyze):
         mock_analyze.return_value = ('{"type": "book", "title": "conflict_name", "author": "test"}', 100)
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -138,7 +137,7 @@ class TestCore(unittest.TestCase):
             self.assertTrue(new_filepath.exists())
             self.assertEqual(new_filepath.read_text(), "original content")
 
-    @patch('llmtitle.core.DocumentAnalyzer.analyze')
+    @patch('srn.core.DocumentAnalyzer.analyze') # Corrected this line
     def test_conflict_rename(self, mock_analyze):
         mock_analyze.return_value = ('{"type": "book", "title": "conflict_name", "author": "test"}', 100)
         with tempfile.TemporaryDirectory() as tmpdir:

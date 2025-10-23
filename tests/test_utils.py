@@ -1,7 +1,7 @@
 import unittest
 import pathlib
 import tempfile
-from llmtitle.utils import ThreadSafeCounter, get_file_mime_type, discover_files
+from srn.utils import ThreadSafeCounter, get_file_mime_type, discover_files
 
 class TestUtils(unittest.TestCase):
 
